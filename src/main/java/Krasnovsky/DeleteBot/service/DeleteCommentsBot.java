@@ -1,8 +1,5 @@
 package Krasnovsky.DeleteBot.service;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -29,19 +26,15 @@ import lombok.Getter;
 @Component
 public class DeleteCommentsBot extends TelegramLongPollingBot {
 
-    private static long CHANNEL_ID = BotConstants.CHANNEL_ID_PARK;
-    private static long TEST_ID = BotConstants.TEST_ID;
-    private static long MONEY_CHANNEL_ID = BotConstants.MONEY_CHANNEL_ID;
-    private static long BUSINESS_CHANNEL_ID = BotConstants.BUSINESS_CHANNEL_ID;
-    private static long BUSINESS_CHAT_ID = BotConstants.BUSINESS_CHAT_ID;
-    private static long BOSS_ID = BotConstants.BOSS_ID;
-    private static long FATHER_ID = BotConstants.FATHER_ID;
+    private final long[] CHANNEL_IDS_TO_LEAVE = { BotConstants.MONEY_CHANNEL_ID, BotConstants.CHANNEL_ID_PARK,
+	    BotConstants.BUSINESS_CHANNEL_ID, BotConstants.TEST_ID, BotConstants.BUSINESS_CHAT_ID };
+
+    private static final Pattern URL_SYMBOLS = Pattern.compile(BotConstants.URL_REGEX);
     private static final String URL_REGEX = BotConstants.URL_REGEX;
-    private static final Pattern URL_SYMBOLS = Pattern.compile(URL_REGEX);
 
-    final BotConfig config;
+    private long CHANNEL_ID;
+    private final BotConfig config;
 
-    @SuppressWarnings("deprecation")
     public DeleteCommentsBot(BotConfig config) {
 	this.config = config;
     }
@@ -66,27 +59,14 @@ public class DeleteCommentsBot extends TelegramLongPollingBot {
 	if (update.hasMessage()) {
 
 	    Message message = update.getMessage(); // Получаем новое сообщение
-
 	    long userId = message.getFrom().getId();
-	    System.out.println("//// USER_ID " + userId);
+	    System.out.println("USER_ID " + userId);
 	    CHANNEL_ID = message.getChatId();// Получаем CHAT_ID отправителя
-	    if (CHANNEL_ID != MONEY_CHANNEL_ID && CHANNEL_ID != BUSINESS_CHANNEL_ID && CHANNEL_ID != TEST_ID
-		    && CHANNEL_ID != BUSINESS_CHAT_ID) {
+	    System.out.println("CHANNEL_ID: " + CHANNEL_ID);
+
+	    if (!shouldLeaveGroup(CHANNEL_ID)) {
 		leaveGroup(CHANNEL_ID);
 	    }
-	    // if (userId != BOSS_ID) { // Исключаем сообщения автора && userId != Father_ID
-	    // канала
-
-	    Instant instant = Instant.ofEpochSecond(message.getDate()); // получаем дату
-	    LocalDateTime dateTime = LocalDateTime.ofInstant(instant, ZoneId.systemDefault()); // сообщения //
-											       // сообщения
-	    // GetChatMember getChatMember = new
-	    // GetChatMember(message.getChatId().toString(), userId);
-	    // Integer joinDate = chatMember.getDate();
-	    // long joinDateMillis = (long) joinDate * 1000;
-//				System.out.println(message.getText() + " TEXT " + "\n\n");
-//				System.out.println(message + " sender " + userId + "\n\n");
-//				System.out.println(message.getChatId());
 
 	    boolean urlStatus = checkUrlStatus(message); // есть ли в сообщении URL
 	    System.out.println(urlStatus);
@@ -119,11 +99,20 @@ public class DeleteCommentsBot extends TelegramLongPollingBot {
 //					}
 //				}
 	    // } BOSS ID
-	    if (userId == 873614042) {
-		deleteMessage(message);
-		sendMessage(CHANNEL_ID, "Фу! пользователь полное Г" + " " + "ID" + " " + userId);
+//	    if (userId == 873614042) {
+//		deleteMessage(message);
+//		sendMessage(CHANNEL_ID, "Фу! пользователь полное Г" + " " + "ID" + " " + userId);
+//	    }
+	}
+    }
+
+    private boolean shouldLeaveGroup(long channelId) {
+	for (long id : CHANNEL_IDS_TO_LEAVE) {
+	    if (channelId == id) {
+		return true;
 	    }
 	}
+	return false;
     }
 
     private static final Pattern PUNCT_SYMBOLS = Pattern.compile("[!\"#$%&'()*+,-./:;<«=»>4⃣?@\\[\\]^_`{|}~]\\n");
@@ -175,7 +164,9 @@ public class DeleteCommentsBot extends TelegramLongPollingBot {
 
 //		if (words.contains("Путин") || words.contains("Зеленский") || words.contains("Жириновский")
 //				|| words.contains("Кадры точно не для детей!") || words.contains("Жиринọвскọгọ") && urlStatus == true) {
-	if (matcher.find() && urlStatus == true) {
+	System.out.println("MESSAGE STATUS: " + (matcher.find() != true && urlStatus == true));
+	if (matcher.find() != true && urlStatus == true) {
+
 	    deleteMessage(message); // удаление сообщения
 	    sendMessage(CHANNEL_ID, "Фу! плохой пользователь" + " " + "TEXT" + " " + urlStatus);
 	    urlStatus = false;
@@ -232,7 +223,7 @@ public class DeleteCommentsBot extends TelegramLongPollingBot {
 
     private boolean containsUrl(String text) {
 	Pattern pattern = Pattern.compile(URL_REGEX);
-	Matcher matcher = pattern.matcher(text);
+	Matcher matcher = URL_SYMBOLS.matcher(text);
 	return matcher.find();
     }
 
@@ -253,8 +244,8 @@ public class DeleteCommentsBot extends TelegramLongPollingBot {
 		tests.add(entity.getText().matches(URL_REGEX));
 	    }
 	}
-	System.out.println(tests);
-	System.out.println("URLS :" + tests);
+	System.out.println("TESTS: " + tests);
+	System.out.println("URLS: " + tests);
 	if (tests.contains(true)) {
 	    return true;
 	} else {
@@ -265,7 +256,7 @@ public class DeleteCommentsBot extends TelegramLongPollingBot {
     /// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     private void sendMessage(long chatId, String textToSend) {
 	SendMessage message = new SendMessage();
-	message.setChatId(TEST_ID);
+	message.setChatId(BotConstants.CHANNEL_ID_PARK);
 	message.setText(textToSend);
 
 	try {
